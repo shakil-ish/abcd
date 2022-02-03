@@ -1,6 +1,15 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart' as pp;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:untitled2/b.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -49,7 +58,9 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-
+  GoogleSignInAccount? _userObj;
+  File? file;
+  Uint8List? bytes;
   void _incrementCounter() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -73,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text("A"),
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
@@ -95,18 +106,51 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            _userObj != null ? Text("${_userObj?.email}") : SizedBox(),
+            _userObj != null ? Text("${_userObj?.photoUrl}") : SizedBox(),
+            file == null ? SizedBox() : Image.file(file!),
             const Text(
               'You have pushed the button this many times:',
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+            // Text(
+            //   '$_counter',
+            //   style: Theme.of(context).textTheme.headline4,
+            // ),
+            GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) {
+                    return const B();
+                  }));
+                },
+                child: Container(
+                    height: 30,
+                    width: 100,
+                    color: Colors.deepPurple,
+                    child: Center(child: Text("A")))),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          GoogleSignIn _sign = GoogleSignIn();
+          _sign.signIn().then((value) async {
+            _userObj = value!;
+
+            final ByteData imageData =
+                await NetworkAssetBundle(Uri.parse("${value.photoUrl}"))
+                    .load("");
+            bytes = imageData.buffer.asUint8List();
+            final tempDir = await pp.getTemporaryDirectory();
+            file = await File('${tempDir.path}/image.jpg').create();
+            file?.writeAsBytesSync(bytes!);
+            // file = File.fromRawPath(bytes!);
+// display it with the Image.memory widget
+
+            setState(() {});
+          }).then((value) {
+            _sign.signOut();
+          });
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
